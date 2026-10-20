@@ -1,0 +1,91 @@
+{
+  // Local tasks (gitignored). Ctrl+Shift+B runs the default "proxy + backend" task.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // LLM traffic inspector. Start this before the mitmweb launch config.
+      // 8082: proxy; 8081: web UI. 8080 is already used by dify-weaviate.
+      "label": "proxy: mitmweb",
+      "type": "shell",
+      "command": "mitmweb",
+      "args": [
+        "--listen-port", "8082",
+        "--web-port", "8081",
+        "--set", "web_open_browser=false",
+        "--set", "web_password=agent"
+      ],
+      "presentation": { "group": "dev", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: Server (uvicorn, hot reload)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": [
+        "-m", "uvicorn",
+        "app.main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--reload",
+        "--env-file", ".env.development"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONUTF8": "1",
+          "PYTHONIOENCODING": "utf-8"
+        }
+      },
+      "presentation": { "group": "dev", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "backend: Server (uvicorn, hot reload, via mitmweb)",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": [
+        "-m", "uvicorn",
+        "app.main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--reload",
+        "--env-file", ".env.development"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONUTF8": "1",
+          "PYTHONIOENCODING": "utf-8",
+          "HTTPS_PROXY": "http://127.0.0.1:8082",
+          "SSL_CERT_FILE": "${env:USERPROFILE}/.mitmproxy/mitmproxy-ca-cert.pem",
+          "NO_PROXY": "localhost,127.0.0.1,::1"
+        }
+      },
+      "presentation": { "group": "dev", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "db: migrate",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["-m", "alembic", "upgrade", "head"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "APP_ENV": "development",
+          "PYTHONUTF8": "1",
+          "PYTHONIOENCODING": "utf-8"
+        }
+      },
+      "presentation": { "group": "dev", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "dev: proxy + backend (mitm)",
+      "dependsOn": ["proxy: mitmweb", "backend: Server (uvicorn, hot reload, via mitmweb)"],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    }
+  ]
+}

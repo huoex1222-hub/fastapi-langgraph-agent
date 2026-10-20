@@ -1,0 +1,75 @@
+{
+  // Local debug configs (gitignored). See docs/local-run-deepseek-siliconflow.md.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server (hot reload)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "app.main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--reload",
+        "--env-file", ".env.development"
+      ],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // Start the "proxy: mitmweb" task first, otherwise LLM calls fail to connect.
+      "name": "Server (hot reload, via mitmweb)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "app.main:app",
+        "--host", "127.0.0.1",
+        "--port", "8000",
+        "--reload",
+        "--env-file", ".env.development"
+      ],
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+        // httpx (the OpenAI SDK transport) reads these with trust_env=True.
+        "HTTPS_PROXY": "http://127.0.0.1:8082",
+        "SSL_CERT_FILE": "${env:USERPROFILE}/.mitmproxy/mitmproxy-ca-cert.pem",
+        // Keep local traffic (Langfuse on :3000) off the proxy.
+        "NO_PROXY": "localhost,127.0.0.1,::1"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // Real breakpoints: no --reload, so the app runs in the debugged process.
+      // scripts/run_dev.py installs WindowsSelectorEventLoopPolicy before uvicorn.
+      // Start the "proxy: mitmweb" task first.
+      "name": "Server (debug breakpoints, via mitmweb)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/run_dev.py",
+      "cwd": "${workspaceFolder}",
+      "python": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "PYTHONPATH": "${workspaceFolder}",
+        "HTTPS_PROXY": "http://127.0.0.1:8082",
+        "SSL_CERT_FILE": "${env:USERPROFILE}/.mitmproxy/mitmproxy-ca-cert.pem",
+        "NO_PROXY": "localhost,127.0.0.1,::1"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}
