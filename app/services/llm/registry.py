@@ -18,6 +18,81 @@ from app.core.logging import logger
 
 _TOKEN_LIMIT: Dict[str, Any] = {"max_completion_tokens": settings.MAX_TOKENS}
 _API_KEY = SecretStr(settings.OPENAI_API_KEY)
+_BASE_URL = settings.OPENAI_BASE_URL or None
+
+# Built-in OpenAI registry. Kept as data so the same class can also build a
+# registry for any OpenAI-compatible endpoint configured via LLM_MODELS.
+_DEFAULT_MODELS: List[Dict[str, Any]] = [
+    {
+        "name": "gpt-5-mini",
+        "model": "gpt-5-mini",
+        "reasoning": {"effort": "low"},
+    },
+    {
+        "name": "gpt-5.4",
+        "model": "gpt-5",
+        "reasoning": {"effort": "medium"},
+    },
+    {
+        "name": "gpt-5.4-nano",
+        "model": "gpt-5.4-nano",
+        "reasoning": {"effort": "low"},
+    },
+    {
+        "name": "gpt-5",
+        "model": "gpt-5",
+        "top_p": 0.95 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.8,
+        "presence_penalty": 0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
+        "frequency_penalty": 0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
+    },
+]
+
+
+def _create_llm(model_name: str, **kwargs: Any) -> ChatOpenAI:
+    """Create a ChatOpenAI instance for the active provider.
+
+    OpenAI-specific kwargs (``reasoning``, ``max_completion_tokens``) are only
+    sent to the official OpenAI endpoint; compatible providers use
+    ``max_tokens`` instead.
+
+    Args:
+        model_name: Provider-specific model identifier.
+        **kwargs: Optional overrides forwarded to ``ChatOpenAI``.
+
+    Returns:
+        Configured ``ChatOpenAI`` instance.
+    """
+    if _BASE_URL:
+        kwargs.pop("reasoning", None)
+        kwargs.pop("model_kwargs", None)
+        kwargs.setdefault("max_tokens", settings.MAX_TOKENS)
+        return ChatOpenAI(model=model_name, api_key=_API_KEY, base_url=_BASE_URL, **kwargs)
+
+    return ChatOpenAI(model=model_name, api_key=_API_KEY, **kwargs)
+
+
+def _build_registry() -> List[Dict[str, Any]]:
+    """Build the model registry from env config or the built-in OpenAI list.
+
+    Returns:
+        List of ``{"name": str, "llm": ChatOpenAI}`` entries.
+    """
+    if settings.LLM_MODELS:
+        if not _BASE_URL:
+            logger.warning("custom_llm_models_without_base_url", models=settings.LLM_MODELS)
+        return [{"name": name, "llm": _create_llm(name)} for name in settings.LLM_MODELS]
+
+    entries: List[Dict[str, Any]] = []
+    for spec in _DEFAULT_MODELS:
+        model_kwargs = {key: value for key, value in spec.items() if key not in ("name", "model")}
+        model_kwargs["model_kwargs"] = _TOKEN_LIMIT
+        entries.append(
+            {
+                "name": spec["name"],
+                "llm": ChatOpenAI(model=spec["model"], api_key=_API_KEY, **model_kwargs),
+            }
+        )
+    return entries
 
 
 class LLMRegistry:
@@ -27,46 +102,7 @@ class LLMRegistry:
     methods to retrieve them by name with optional argument overrides.
     """
 
-    LLMS: List[Dict[str, Any]] = [
-        {
-            "name": "gpt-5-mini",
-            "llm": ChatOpenAI(
-                model="gpt-5-mini",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "low"},
-            ),
-        },
-        {
-            "name": "gpt-5.4",
-            "llm": ChatOpenAI(
-                model="gpt-5",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "medium"},
-            ),
-        },
-        {
-            "name": "gpt-5.4-nano",
-            "llm": ChatOpenAI(
-                model="gpt-5.4-nano",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                reasoning={"effort": "low"},
-            ),
-        },
-        {
-            "name": "gpt-5",
-            "llm": ChatOpenAI(
-                model="gpt-5",
-                api_key=_API_KEY,
-                model_kwargs=_TOKEN_LIMIT,
-                top_p=0.95 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.8,
-                presence_penalty=0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
-                frequency_penalty=0.1 if settings.ENVIRONMENT == Environment.PRODUCTION else 0.0,
-            ),
-        },
-    ]
+    LLMS: List[Dict[str, Any]] = _build_registry()
 
     @classmethod
     def get(cls, model_name: str, **kwargs) -> BaseChatModel:
@@ -93,7 +129,7 @@ class LLMRegistry:
 
         if kwargs:
             logger.debug("creating_llm_with_custom_args", model_name=model_name, custom_args=list(kwargs.keys()))
-            return ChatOpenAI(model=model_name, api_key=_API_KEY, **kwargs)
+            return _create_llm(model_name, **kwargs)
 
         logger.debug("using_default_llm_instance", model_name=model_name)
         return model_entry["llm"]

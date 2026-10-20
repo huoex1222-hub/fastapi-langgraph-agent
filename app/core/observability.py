@@ -8,7 +8,20 @@ from app.core.logging import logger
 
 
 def langfuse_init():
-    """Initialize Langfuse."""
+    """Initialize Langfuse.
+
+    Tracing is optional: skip client creation entirely when it is disabled or
+    when no credentials are configured. Auth failures are logged but never
+    prevent the application from starting.
+    """
+    if not settings.LANGFUSE_TRACING_ENABLED:
+        logger.debug("langfuse_tracing_disabled")
+        return
+
+    if not settings.LANGFUSE_PUBLIC_KEY or not settings.LANGFUSE_SECRET_KEY:
+        logger.warning("langfuse_tracing_enabled_without_keys")
+        return
+
     langfuse = Langfuse(
         tracing_enabled=settings.LANGFUSE_TRACING_ENABLED,
         public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -18,10 +31,13 @@ def langfuse_init():
         debug=settings.DEBUG,
     )
 
-    if langfuse.auth_check():
-        logger.debug("langfuse_auth_success")
-    else:
-        logger.debug("langfuse_auth_failure")
+    try:
+        if langfuse.auth_check():
+            logger.debug("langfuse_auth_success")
+        else:
+            logger.debug("langfuse_auth_failure")
+    except Exception:
+        logger.exception("langfuse_auth_check_failed")
 
 
 def get_langfuse_callback_handler() -> CallbackHandler:

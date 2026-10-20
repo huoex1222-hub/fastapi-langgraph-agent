@@ -256,7 +256,9 @@ class LLMService:
 
         def _override_target(idx: int) -> Any:
             base = LLMRegistry.get(LLMRegistry.LLMS[idx]["name"], **model_kwargs)
-            return base.with_structured_output(response_format) if response_format else base
+            # Use function calling rather than json_schema: OpenAI-compatible
+            # providers such as DeepSeek reject the json_schema response format.
+            return base.with_structured_output(response_format, method="function_calling") if response_format else base
 
         def _default_target(_: int) -> Any:
             return self._llm

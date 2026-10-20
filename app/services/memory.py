@@ -1,6 +1,7 @@
 """Long-term memory service using mem0 and pgvector with optional cache layer."""
 
 from mem0 import AsyncMemory
+from mem0.utils.factory import EmbedderFactory
 
 from app.core.cache import (
     cache_key,
@@ -8,6 +9,13 @@ from app.core.cache import (
 )
 from app.core.config import settings
 from app.core.logging import logger
+
+# mem0 validates embedder provider names against a fixed whitelist, so keep the
+# "openai" provider and swap its implementation when the compatible mode is on.
+# The compatible implementation omits the `dimensions` argument rejected by
+# providers such as SiliconFlow.
+if settings.LONG_TERM_MEMORY_EMBEDDER_PROVIDER == "openai_compatible":
+    EmbedderFactory.provider_to_class["openai"] = "app.services.embeddings.OpenAICompatibleEmbedding"
 
 
 class MemoryService:
@@ -30,15 +38,25 @@ class MemoryService:
                             "password": settings.POSTGRES_PASSWORD,
                             "host": settings.POSTGRES_HOST,
                             "port": settings.POSTGRES_PORT,
+                            "embedding_model_dims": settings.LONG_TERM_MEMORY_EMBEDDER_DIMS,
                         },
                     },
                     "llm": {
                         "provider": "openai",
-                        "config": {"model": settings.LONG_TERM_MEMORY_MODEL},
+                        "config": {
+                            "model": settings.LONG_TERM_MEMORY_MODEL,
+                            "openai_base_url": settings.LONG_TERM_MEMORY_LLM_BASE_URL or None,
+                            "api_key": settings.LONG_TERM_MEMORY_LLM_API_KEY or None,
+                        },
                     },
                     "embedder": {
                         "provider": "openai",
-                        "config": {"model": settings.LONG_TERM_MEMORY_EMBEDDER_MODEL},
+                        "config": {
+                            "model": settings.LONG_TERM_MEMORY_EMBEDDER_MODEL,
+                            "openai_base_url": settings.LONG_TERM_MEMORY_EMBEDDER_BASE_URL or None,
+                            "api_key": settings.LONG_TERM_MEMORY_EMBEDDER_API_KEY or None,
+                            "embedding_dims": settings.LONG_TERM_MEMORY_EMBEDDER_DIMS,
+                        },
                     },
                 }
             )

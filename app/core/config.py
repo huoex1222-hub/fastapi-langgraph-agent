@@ -147,7 +147,14 @@ class Settings:
 
         # LangGraph Configuration
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+        # Optional OpenAI-compatible endpoint (DeepSeek, SiliconFlow, etc.).
+        # Leave empty to use api.openai.com.
+        self.OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
+        # Comma-separated model names for the agent and circular fallback.
+        # Empty keeps the built-in OpenAI registry.
+        self.LLM_MODELS = parse_list_from_env("LLM_MODELS", [])
         self.DEFAULT_LLM_MODEL = os.getenv("DEFAULT_LLM_MODEL", "gpt-5-mini")
+        self.SESSION_NAMING_MODEL = os.getenv("SESSION_NAMING_MODEL", "gpt-5.4-nano")
         self.SESSION_NAMING_ENABLED = os.getenv("SESSION_NAMING_ENABLED", "true").lower() == "true"
         self.DEFAULT_LLM_TEMPERATURE = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.2"))
         self.MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
@@ -156,7 +163,17 @@ class Settings:
 
         # Long term memory Configuration
         self.LONG_TERM_MEMORY_MODEL = os.getenv("LONG_TERM_MEMORY_MODEL", "gpt-5-nano")
+        self.LONG_TERM_MEMORY_LLM_BASE_URL = os.getenv("LONG_TERM_MEMORY_LLM_BASE_URL", self.OPENAI_BASE_URL)
+        self.LONG_TERM_MEMORY_LLM_API_KEY = os.getenv("LONG_TERM_MEMORY_LLM_API_KEY", self.OPENAI_API_KEY)
+        self.LONG_TERM_MEMORY_EMBEDDER_PROVIDER = os.getenv("LONG_TERM_MEMORY_EMBEDDER_PROVIDER", "openai")
         self.LONG_TERM_MEMORY_EMBEDDER_MODEL = os.getenv("LONG_TERM_MEMORY_EMBEDDER_MODEL", "text-embedding-3-small")
+        self.LONG_TERM_MEMORY_EMBEDDER_BASE_URL = os.getenv(
+            "LONG_TERM_MEMORY_EMBEDDER_BASE_URL", self.OPENAI_BASE_URL
+        )
+        self.LONG_TERM_MEMORY_EMBEDDER_API_KEY = os.getenv(
+            "LONG_TERM_MEMORY_EMBEDDER_API_KEY", self.OPENAI_API_KEY
+        )
+        self.LONG_TERM_MEMORY_EMBEDDER_DIMS = int(os.getenv("LONG_TERM_MEMORY_EMBEDDER_DIMS", "1536"))
         self.LONG_TERM_MEMORY_COLLECTION_NAME = os.getenv("LONG_TERM_MEMORY_COLLECTION_NAME", "longterm_memory")
         # JWT Configuration
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
