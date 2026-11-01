@@ -50,7 +50,25 @@ All logs use [structlog](https://www.structlog.org/) in a consistent format:
 - **Development**: coloured console output
 - **Production**: JSON (pipe to your log aggregator)
 
-Every log line automatically carries `request_id`, `session_id`, and `user_id` when available — bound by `LoggingContextMiddleware`.
+Every log line automatically carries `request_id` (from `asgi-correlation-id`), plus `session_id` and `user_id` when available.
+
+### Logging context (`session_id` / `user_id`)
+
+Request-scoped values are stored in a `ContextVar` by `bind_context()` (`app/core/logging.py:37`). There is no explicit read at the call site — the structlog processor `add_context_to_event_dict` (`app/core/logging.py:61`) merges the bound dictionary into every event just before rendering.
+
+Bind sites:
+
+| Where | Field | When |
+| --- | --- | --- |
+| `app/core/middleware.py:112` | `session_id` | Request start, decoded from the JWT `sub` claim |
+| `app/api/v1/auth.py:91` | `user_id` | Successful login |
+| `app/api/v1/auth.py:144` | `user_id` | Every authenticated request (`get_current_session`) |
+
+`clear_context()` runs before and after each request (`app/core/middleware.py:98,133`) so values cannot leak between requests.
+
+Because the processor calls `event_dict.update(context)` after keyword arguments are collected, a bound value **overrides** an explicitly logged field with the same name. Background tasks created with `asyncio.create_task` inherit the context snapshot.
+
+> Note: `LoggingContextMiddleware` also has a branch that would bind `user_id` from `request.state.user_id` (`app/core/middleware.py:126-127`), but nothing assigns that attribute — authentication binds the context directly, so the branch never fires.
 
 ### Log format conventions
 

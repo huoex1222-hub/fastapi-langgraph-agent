@@ -38,6 +38,7 @@ Open [http://localhost:8000/docs](http://localhost:8000/docs) to see the interac
 | [Database & Migrations](docs/database.md) | Schema, Alembic migrations, pgvector |
 | [LLM Service](docs/llm-service.md) | Models, retries, fallback, timeout budget |
 | [Memory](docs/memory.md) | mem0 long-term memory, cache layer |
+| [Graph State Design](docs/graph-state-design.md) | Conversation state, checkpointing, window trimming, long-term memory injection |
 | [Observability](docs/observability.md) | Langfuse, structured logging, Prometheus, profiling |
 | [Evaluation](docs/evaluation.md) | Eval framework, custom metrics, reports |
 | [Docker](docs/docker.md) | Docker, Compose, full monitoring stack |

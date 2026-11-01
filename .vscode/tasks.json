@@ -58,6 +58,7 @@
           "PYTHONIOENCODING": "utf-8",
           "HTTPS_PROXY": "http://127.0.0.1:8082",
           "SSL_CERT_FILE": "${env:USERPROFILE}/.mitmproxy/mitmproxy-ca-cert.pem",
+          "REQUESTS_CA_BUNDLE": "${env:USERPROFILE}/.mitmproxy/mitmproxy-ca-cert.pem",
           "NO_PROXY": "localhost,127.0.0.1,::1"
         }
       },

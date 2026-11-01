@@ -430,6 +430,7 @@ ls "$USERPROFILE/.mitmproxy/mitmproxy-ca-cert.pem"
 - **必须先启动 mitmweb**，否则应用访问 LLM 会连接失败或证书校验失败。
 - `HTTPS_PROXY` 和 `SSL_CERT_FILE` 只写在 launch/task 配置里，不写进 `.env.development`；普通 `make dev` 不受影响。
 - `SSL_CERT_FILE` 指向 `%USERPROFILE%/.mitmproxy/mitmproxy-ca-cert.pem`，只信任 mitmproxy 的 CA。
+- 同时设置 `REQUESTS_CA_BUNDLE`：`tiktoken` 首次运行会用 `requests` 下载 BPE 词表，而 `requests` 不读 `SSL_CERT_FILE`。漏掉它时导入阶段就会因证书校验失败而退出（日志停在 `Starting new HTTPS connection (1): openaipublic.blob.core.windows.net:443`），端口 8000 一直不监听。
 - `NO_PROXY=localhost,127.0.0.1,::1` 保证本地 Langfuse（`:3000`）和数据库流量不经过代理。
 - 热重载配置使用 `--reload`，应用运行在子进程中，断点可能不生效；需要断点时用 `Server (debug breakpoints, via mitmweb)`。
 - 8080 已被 dify-weaviate 占用，所以代理用 8082、Web UI 用 8081；如需修改，`launch.json` 和 `tasks.json` 里的端口要一起改。

@@ -97,7 +97,7 @@ graph LR
 
 - **`chat` node** — builds the system prompt, calls the LLM, returns a `Command` routing to `tool_call` or `END`
 - **`tool_call` node** — executes all tool calls concurrently, feeds results back to `chat`
-- **Checkpointer** — `AsyncPostgresSaver` persists the full `GraphState` per `thread_id` (session), enabling resume on interrupts and multi-turn memory
+- **Checkpointer** — `AsyncPostgresSaver` persists the full `GraphState` per `thread_id` (session), enabling resume on interrupts and multi-turn memory. See [graph-state-design.md](graph-state-design.md) for how state, prompt-window trimming, and long-term memory interact.
 
 ## Key design decisions
 
